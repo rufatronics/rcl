@@ -1,0 +1,52 @@
+// RCL — Reasoning-Constraint Language
+// Grammar: indentation-based tree, one node shape reused across types.
+//
+// PROBLEM  [confidence]                       : "text"
+// CONSTRAINT [DECIDE_AT]? [confidence][cite]  : "text"
+// REASON     [DECIDE_AT]? [confidence][cite]  : "text"   (nests: children are REASON)
+// SOLUTION   [DECIDE_AT]? [confidence][cite]  : "text"
+// DELTA (no tags)                             : "text"
+
+start: problem+
+
+problem: "PROBLEM" NODE_ID prob_tags ":" STRING _NL _INDENT block+ _DEDENT
+
+block: constraint
+     | reason
+     | solution
+     | delta
+
+constraint: "CONSTRAINT" NODE_ID tags ":" STRING _NL
+
+reason: "REASON" NODE_ID tags ":" STRING _NL [_INDENT reason+ _DEDENT]
+
+solution: "SOLUTION" NODE_ID tags ":" STRING _NL
+
+delta: "DELTA" ":" STRING _NL
+
+// PROBLEM only ever carries confidence (it is given, not cited from a source)
+prob_tags: prob_tag*
+prob_tag: confidence
+
+// every other node type can carry any of the three, in any order, each at most once
+// (uniqueness of decide_at/confidence/cite per node is enforced in the tree-builder,
+// not the grammar, to keep the grammar itself simple and LALR-friendly)
+tags: tag*
+tag: decide_at
+   | confidence
+   | cite
+
+decide_at:  "[" "DECIDE_AT" "]"
+confidence: "[" "confidence" ":" FLOAT "]"
+cite:       "[" "cite" ":" (STRING | UNSUPPORTED) "]"
+
+UNSUPPORTED: "UNSUPPORTED"
+
+NODE_ID: /[a-zA-Z_][a-zA-Z0-9_]*/
+FLOAT: /[0-9]+(\.[0-9]+)?/
+STRING: /"[^"]*"/
+
+%declare _INDENT _DEDENT
+_NL: /(\r?\n[\t ]*)+/
+
+%ignore /[ \t]+/
